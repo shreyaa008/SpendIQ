@@ -164,3 +164,169 @@ function setWarningThreshold(percent) {
 function saveBudgets() {
   localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(budgets));
 }
+
+/* =========================================================
+   Part 2: BUDGET OPERATIONS
+   ========================================================= */
+/**
+ * Returns the budget object for a given period.
+ * @param {string} [period] - defaults to selectedPeriod
+ * @returns {Object} e.g. { Food: 6000, Travel: 3000 }
+ */
+function getBudgetsForPeriod(period = selectedPeriod) {
+  const targetPeriod = period || selectedPeriod;
+  const periodBudgets = budgets[targetPeriod];
+
+  // Return an empty object when no budgets exist for this month.
+  return periodBudgets &&
+    typeof periodBudgets === "object" &&
+    !Array.isArray(periodBudgets)
+    ? periodBudgets
+    : {};
+}
+
+/**
+ * Sets or updates a monthly budget for one category.
+ * @param {string} category
+ * @param {number} amount
+ * @param {string} [period] - defaults to selectedPeriod
+ * @returns {boolean} true when the budget is saved
+ */
+function setBudget(category, amount, period = selectedPeriod) {
+  const targetPeriod = period || selectedPeriod;
+
+  // Check that the selected month is valid.
+  if (typeof isValidPeriodKey === "function" && !isValidPeriodKey(targetPeriod)) {
+    return false;
+  }
+
+  // Only categories listed in CATEGORIES can have a budget.
+  if (typeof category !== "string" || !CATEGORIES.includes(category)) {
+    return false;
+  }
+
+  // Do not accept empty values, booleans, or invalid amounts.
+  if (
+    amount === null ||
+    typeof amount === "boolean" ||
+    (typeof amount === "string" && amount.trim() === "")
+  ) {
+    return false;
+  }
+
+  const numAmount = Number(amount);
+
+  // Budget amount must be a positive number.
+  if (!Number.isFinite(numAmount) || numAmount <= 0) {
+    return false;
+  }
+
+  // Create a new object for the month if it does not exist yet.
+  if (
+    !budgets[targetPeriod] ||
+    typeof budgets[targetPeriod] !== "object" ||
+    Array.isArray(budgets[targetPeriod])
+  ) {
+    budgets[targetPeriod] = {};
+  }
+
+  budgets[targetPeriod][category] = numAmount;
+  saveBudgets();
+
+  return true;
+}
+
+/**
+ * Deletes a category budget from a selected period.
+ * @param {string} category
+ * @param {string} [period] - defaults to selectedPeriod
+ * @returns {boolean} true when a budget was deleted
+ */
+function deleteBudget(category, period = selectedPeriod) {
+  const targetPeriod = period || selectedPeriod;
+  const periodBudgets = budgets[targetPeriod];
+
+  if (
+    periodBudgets &&
+    typeof periodBudgets === "object" &&
+    !Array.isArray(periodBudgets) &&
+    periodBudgets[category] !== undefined
+  ) {
+    delete periodBudgets[category];
+
+    // Remove the month too if its last budget was deleted.
+    if (Object.keys(periodBudgets).length === 0) {
+      delete budgets[targetPeriod];
+    }
+
+    saveBudgets();
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether spending is okay, near the limit, or over budget.
+ * @param {string} category
+ * @param {string} [period] - defaults to selectedPeriod
+ * @returns {{status: string, spent: number, limit: number, remaining: number}}
+ */
+function checkBudgetStatus(category, period = selectedPeriod) {
+  const targetPeriod = period || selectedPeriod;
+  const periodBudgets = getBudgetsForPeriod(targetPeriod);
+  const limit = periodBudgets[category] || 0;
+
+  // Get total spending only for the selected month.
+  const periodExpenses = getExpensesForPeriod(targetPeriod);
+  const totals = getCategoryTotals(periodExpenses);
+  const spent = totals[category] || 0;
+  const remaining = limit - spent;
+
+  let status = "ok";
+
+  // if/else decides the budget status.
+  if (limit > 0 && spent > limit) {
+    status = "exceeded";
+  } else if (limit > 0 && spent >= limit * getWarningThresholdRatio()) {
+    status = "warning";
+  }
+
+  return { status, spent, limit, remaining };
+}
+
+/**
+ * Returns the budget status for multiple categories.
+ * Uses rest parameters and the spread operator.
+ * @param {string} period
+ * @param {...string} categories
+ * @returns {Array}
+ */
+function getStatusForCategories(period = selectedPeriod, ...categories) {
+  return categories.map((category) => ({
+    category,
+    ...checkBudgetStatus(category, period),
+  }));
+}
+
+/**
+ * Counts how many category budgets were exceeded in a period.
+ * @param {string} [period] - defaults to selectedPeriod
+ * @returns {number}
+ */
+function countExceededBudgets(period = selectedPeriod) {
+  const targetPeriod = period || selectedPeriod;
+  const periodBudgets = getBudgetsForPeriod(targetPeriod);
+  let exceededCount = 0;
+
+  // for...in loops through categories stored in the object.
+  for (const category in periodBudgets) {
+    const { status } = checkBudgetStatus(category, targetPeriod);
+
+    if (status === "exceeded") {
+      exceededCount++;
+    }
+  }
+
+  return exceededCount;
+}
