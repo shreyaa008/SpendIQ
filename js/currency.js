@@ -46,7 +46,6 @@ async function fetchWithRetry(url, maxRetries = MAX_FETCH_RETRIES) {
   do {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
     try {
       const response = await fetch(url, { signal: controller.signal });
       if (response.ok) return response;
@@ -65,6 +64,55 @@ async function fetchWithRetry(url, maxRetries = MAX_FETCH_RETRIES) {
 }
 
 
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
+
+/**
+ * Gets exchange rates for a currency, utilizing sessionStorage cache if fresh (< 5 mins),
+ * or fetching fresh rates via fetchWithRetry() on cache miss or expiration.
+ * @param {string} fromCurrency
+ * @returns {Promise<Object>} rates dictionary
+ */
+async function getCachedExchangeRates(fromCurrency) {
+  const cacheKey = `smartExpenseManager_rates_${fromCurrency}`;
+  const rawCache = sessionStorage.getItem(cacheKey);
+  let cached = null;
+
+  if (rawCache) {
+    try {
+      const parsed = JSON.parse(rawCache);
+      if (parsed && parsed.rates && parsed.fetchedAt) {
+        cached = parsed;
+        if (Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+          return { rates: cached.rates, stale: false, fetchedAt: cached.fetchedAt };
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse cached exchange rates:", e);
+    }
+  }
+
+  try {
+    const response = await fetchWithRetry(`${EXCHANGE_RATE_API_BASE}${fromCurrency}`);
+    const data = await response.json();
+
+    if (data.result !== "success") {
+      throw new Error("Exchange rate service returned an error.");
+    }
+
+    const fetchedAt = Date.now();
+    sessionStorage.setItem(cacheKey, JSON.stringify({ rates: data.rates, fetchedAt }));
+    return { rates: data.rates, stale: false, fetchedAt };
+  } catch (error) {
+    // Fresh fetch failed — fall back to an expired cache entry if we have one.
+    if (cached) {
+      console.error("Live rate fetch failed, using stale cached rates:", error);
+      return { rates: cached.rates, stale: true, fetchedAt: cached.fetchedAt };
+    }
+    throw error;
+  }
+}
+
+
 /* =========================================================
    FETCH + ASYNC/AWAIT  (Lecture 25-28)
    ========================================================= */
@@ -78,39 +126,25 @@ async function fetchWithRetry(url, maxRetries = MAX_FETCH_RETRIES) {
  * @throws if the network request fails or the API returns an error
  */
 async function convertCurrency(amount, fromCurrency, toCurrency) {
-  const response = await fetchWithRetry(`${EXCHANGE_RATE_API_BASE}${fromCurrency}`);
-  const data = await response.json();
+  const { rates, stale, fetchedAt } = await getCachedExchangeRates(fromCurrency);
 
-  if (data.result !== "success") {
-    throw new Error("Exchange rate service returned an error.");
-  }
-
-  const rate = data.rates[toCurrency];
-
+  const rate = rates[toCurrency];
   if (!Number.isFinite(rate) || rate <= 0) {
     throw new Error(`No rate available for ${toCurrency}.`);
   }
 
-  return {
-    convertedAmount: amount * rate,
-    rate
-  };
+  return { convertedAmount: amount * rate, rate, stale, fetchedAt };
 }
-
-
-/* =========================================================
-   PROMISE .then()/.catch() CHAINING
-   ========================================================= */
 
 /**
  * Lecture 25-26: classic Promise .then()/.catch() CHAINING.
- * Performs an API check and returns true if the API responds successfully.
- * @returns {Promise<boolean>}
+ * Uses fresh cached rates when available or performs an API fetch check.
+ * @returns {Promise<boolean>} true if the API is reachable right now (i.e.
+ *   rates came back fresh, not from a stale fallback)
  */
 function checkApiStatus() {
-  return fetchWithRetry(`${EXCHANGE_RATE_API_BASE}INR`)
-    .then((response) => response.json())
-    .then((data) => data.result === "success")
+  return getCachedExchangeRates("INR")
+    .then(({ rates, stale }) => Boolean(rates && Object.keys(rates).length > 0) && !stale)
     .catch((error) => {
       console.error("API status check failed:", error);
       return false;
@@ -135,12 +169,24 @@ function clearCurrencyError() {
 }
 
 /** Renders the converted amount and the rate used, in the result box. */
-function showCurrencyResult(amount, fromCurrency, toCurrency, convertedAmount, rate) {
+function showCurrencyResult(amount, fromCurrency, toCurrency, convertedAmount, rate, stale = false, fetchedAt = null) {
+  const staleNote = stale
+    ? `<span class="rate-note">Using cached rates${fetchedAt ? ` from ${formatCacheAge(fetchedAt)}` : ""} — live rates unavailable right now.</span>`
+    : "";
   currencyResultEl.innerHTML = `
     ${amount} ${fromCurrency} = ${convertedAmount.toFixed(2)} ${toCurrency}
     <span class="rate-note">1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}</span>
+    ${staleNote}
   `;
   currencyResultEl.classList.remove("is-hidden");
+}
+
+/** Formats how long ago a timestamp was, e.g. "12m ago", "3h ago". */
+function formatCacheAge(fetchedAt) {
+  const minutes = Math.max(1, Math.round((Date.now() - fetchedAt) / 60000));
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
 }
 
 /**
@@ -170,23 +216,13 @@ async function handleConvertClick(event) {
   currencyConvertBtn.textContent = "Converting…";
 
   try {
-    const { convertedAmount, rate } =
-      await convertCurrency(amount, fromCurrency, toCurrency);
-
-    showCurrencyResult(
-      amount,
-      fromCurrency,
-      toCurrency,
-      convertedAmount,
-      rate
-    );
+    const { convertedAmount, rate, stale, fetchedAt } = await convertCurrency(amount, fromCurrency, toCurrency);
+    showCurrencyResult(amount, fromCurrency, toCurrency, convertedAmount, rate, stale, fetchedAt);
   } catch (error) {
     console.error("Currency conversion failed:", error);
     // Lecture 25-26: try/catch error handling — never let a failed
     // fetch crash the app, always show a friendly message instead
-    showCurrencyError(
-      error.message || "Something went wrong. Please try again."
-    );
+    showCurrencyError(error.message || "Something went wrong. Please try again.");
   } finally {
     currencyConvertBtn.disabled = false;
     currencyConvertBtn.textContent = "Convert";
@@ -225,16 +261,12 @@ function checkCurrencyApiOnce() {
   apiStatusChecked = true;
 
   if (!apiStatusEl) return;
-
   apiStatusEl.textContent = "Live rates: checking…";
 
   // Lecture 25-26: .then() callback runs once the Promise settles,
   // asynchronously, without blocking the rest of the app
   checkApiStatus().then((isOnline) => {
-    apiStatusEl.textContent = isOnline
-      ? "Live rates: connected"
-      : "Live rates: unavailable";
-
+    apiStatusEl.textContent = isOnline ? "Live rates: connected" : "Live rates: unavailable";
     apiStatusEl.classList.toggle("status-ok", isOnline);
     apiStatusEl.classList.toggle("status-down", !isOnline);
   });
