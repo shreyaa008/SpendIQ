@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Expense Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <div class="app-shell">
+
+    <!-- ============ SIDEBAR NAV ============ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M3 7.5C3 6.11929 4.11929 5 5.5 5H17.5C18.8807 5 20 6.11929 20 7.5V8H5.5C4.11929 8 3 6.88071 3 5.5V7.5Z" fill="currentColor"/>
+            <path d="M3 9.5V17.5C3 18.8807 4.11929 20 5.5 20H18.5C19.8807 20 21 18.8807 21 17.5V10.5C21 9.39543 20.1046 8.5 19 8.5H5.5C4.11929 8.5 3 9.5 3 9.5Z" stroke="currentColor" stroke-width="1.6" fill="none"/>
+            <circle cx="17" cy="14.5" r="1.4" fill="currentColor"/>
+          </svg>
+        </span>
+        <div class="brand-text">
+          <span class="brand-name">SpendIQ</span>
+          <span class="brand-tag">Smart Expense Manager</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn is-active" id="nav-expenses" data-section="section-expenses">
+          <span class="nav-index">01</span> Expenses
+        </button>
+        <button class="nav-btn" id="nav-dashboard" data-section="section-dashboard">
+          <span class="nav-index">02</span> Dashboard
+        </button>
+        <button class="nav-btn" id="nav-settings" data-section="section-settings">
+          <span class="nav-index">03</span> Settings
+        </button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <p>Data is stored only in this browser.</p>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="main">
+
+      <!-- ===================================================== -->
+      <!-- SECTION 1 — EXPENSES                                    -->
+      <!-- ===================================================== -->
+      <section class="section is-active" id="section-expenses">
+        <header class="section-head">
+          <h1>Expenses</h1>
+          <p class="section-sub">Log what you spend. Every entry updates your dashboard instantly.</p>
+        </header>
+
+        <div class="panel form-panel">
+          <form id="expense-form" novalidate>
+            <input type="hidden" id="edit-id" value="" />
+
+            <div class="field">
+              <label for="input-amount">Amount (₹)</label>
+              <input type="number" id="input-amount" step="0.01" placeholder="0.00" />
+            </div>
+
+            <div class="field">
+              <label for="input-category">Category</label>
+              <select id="input-category"></select>
+            </div>
+
+            <div class="field field-wide">
+              <label for="input-description">Description</label>
+              <input type="text" id="input-description" placeholder="e.g. Burger King" />
+            </div>
+
+            <div class="field">
+              <label for="input-payment">Payment mode</label>
+              <select id="input-payment"></select>
+            </div>
+
+            <div class="field">
+              <label for="input-date">Date</label>
+              <input type="date" id="input-date" />
+            </div>
+
+            <div class="field field-actions">
+              <button type="submit" class="btn btn-primary" id="form-submit-btn">Add expense</button>
+              <button type="button" class="btn btn-ghost is-hidden" id="form-cancel-btn">Cancel edit</button>
+            </div>
+
+            <p class="form-error is-hidden" id="form-error"></p>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="toolbar">
+            <input type="text" id="search-input" class="search-input" placeholder="Search descriptions…" />
+
+            <select id="filter-category" class="toolbar-select">
+              <option value="All">All categories</option>
+            </select>
+
+            <select id="sort-select" class="toolbar-select">
+              <option value="dateDesc">Newest first</option>
+              <option value="dateAsc">Oldest first</option>
+              <option value="amountDesc">Amount: high to low</option>
+              <option value="amountAsc">Amount: low to high</option>
+            </select>
+          </div>
+
+          <div class="ledger" id="expense-list">
+            <!-- expense cards injected here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================== -->
+      <!-- SECTION 2 — DASHBOARD                                   -->
+      <!-- ===================================================== -->
+      <section class="section" id="section-dashboard">
+        <header class="section-head">
+          <h1>Dashboard</h1>
+          <p class="section-sub">Where your money came from, and where it went.</p>
+        </header>
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <span class="summary-label">Total income</span>
+            <span class="summary-value" id="dashboard-income">₹0.00</span>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Total expenses</span>
+            <span class="summary-value" id="dashboard-expenses">₹0.00</span>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Remaining balance</span>
+            <span class="summary-value" id="dashboard-balance">₹0.00</span>
+          </div>
+          <div class="summary-card summary-card-accent">
+            <span class="summary-label">Savings rate</span>
+            <span class="summary-value" id="dashboard-savings">0%</span>
+          </div>
+        </div>
+
+        <div class="dash-columns">
+          <div class="panel">
+            <h2 class="panel-title">Category breakdown</h2>
+            <div id="dashboard-category-breakdown" class="breakdown">
+              <!-- bars injected here -->
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2 class="panel-title">Highest expense</h2>
+            <p class="panel-sub" id="dashboard-average">Average expense: ₹0.00</p>
+            <div id="dashboard-highest" class="highest-card">
+              <!-- injected here -->
+            </div>
+
+            <h2 class="panel-title panel-title-spaced">Recent transactions</h2>
+            <div id="dashboard-recent" class="recent-list">
+              <!-- injected here -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================== -->
+      <!-- SECTION 3 — SETTINGS (BUDGET + CURRENCY)                -->
+      <!-- ===================================================== -->
+      <section class="section" id="section-settings">
+        <header class="section-head">
+          <h1>Settings</h1>
+          <p class="section-sub">Set spending limits and convert currencies.</p>
+        </header>
+
+        <div class="dash-columns">
+          <div class="panel">
+            <h2 class="panel-title">Monthly income</h2>
+            <p class="panel-sub">Used to calculate your remaining balance and savings rate on the dashboard.</p>
+
+            <form id="income-form" class="inline-form">
+              <div class="field field-wide">
+                <label for="input-income-amount">Monthly income (₹)</label>
+                <input type="number" id="input-income-amount" step="0.01" placeholder="e.g. 25000" />
+              </div>
+              <div class="field field-actions">
+                <button type="submit" class="btn btn-primary">Save income</button>
+              </div>
+            </form>
+
+            <p class="form-error is-hidden" id="income-error"></p>
+          </div>
+        </div>
+
+        <div class="dash-columns">
+          <div class="panel">
+            <h2 class="panel-title">Monthly budgets</h2>
+            <p class="budget-summary-note is-hidden" id="budget-summary-note"></p>
+
+            <form id="budget-form" class="inline-form">
+              <div class="field">
+                <label for="input-budget-category">Category</label>
+                <select id="input-budget-category"></select>
+              </div>
+              <div class="field">
+                <label for="input-budget-amount">Limit (₹)</label>
+                <input type="number" id="input-budget-amount" step="0.01" placeholder="0.00" />
+              </div>
+              <div class="field field-actions">
+                <button type="submit" class="btn btn-primary">Set budget</button>
+              </div>
+            </form>
+
+            <p class="form-error is-hidden" id="budget-error"></p>
+
+            <div id="budget-list" class="budget-list">
+              <!-- injected here -->
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2 class="panel-title">Currency converter</h2>
+            <p class="api-status" id="api-status">Checking live rates…</p>
+
+            <form id="currency-form" class="inline-form">
+              <div class="field">
+                <label for="input-currency-amount">Amount</label>
+                <input type="number" id="input-currency-amount" step="0.01" placeholder="1000" />
+              </div>
+              <div class="field">
+                <label for="input-currency-from">From</label>
+                <select id="input-currency-from"></select>
+              </div>
+              <div class="field">
+                <label for="input-currency-to">To</label>
+                <select id="input-currency-to"></select>
+              </div>
+              <div class="field field-actions">
+                <button type="submit" class="btn btn-primary" id="currency-convert-btn">Convert</button>
+              </div>
+            </form>
+
+            <p class="form-error is-hidden" id="currency-error"></p>
+            <div class="currency-result is-hidden" id="currency-result"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="undo-toast is-hidden" id="undo-toast">
+    <span>Expense deleted.</span>
+    <button type="button" class="undo-btn" id="undo-btn">Undo</button>
+  </div>
+
+  <script src="js/expenses.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/budget.js"></script>
+  <script src="js/currency.js"></script>
+</body>
+</html>
