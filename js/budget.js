@@ -330,3 +330,112 @@ function countExceededBudgets(period = selectedPeriod) {
 
   return exceededCount;
 }
+
+/* =========================================================
+   Part 3: RENDERING
+   ========================================================= */
+
+/**
+ * Shows all budgets for the selected month on the page.
+ * @param {string} [period] - defaults to selectedPeriod
+ */
+function renderBudgets(period = selectedPeriod) {
+  const targetPeriod = period || selectedPeriod;
+
+  // Clear old budget rows before showing updated data.
+  budgetListEl.innerHTML = "";
+
+  const periodBudgets = getBudgetsForPeriod(targetPeriod);
+  const categoriesWithBudgets = Object.keys(periodBudgets);
+
+  // Show a message if one or more budgets have been exceeded.
+  const exceededCount = countExceededBudgets(targetPeriod);
+
+  if (exceededCount > 0) {
+    const plural = exceededCount > 1 ? "budgets" : "budget";
+    const periodLabel = formatPeriodLabel(targetPeriod);
+
+    budgetSummaryNoteEl.textContent =
+      `You have exceeded ${exceededCount} ${plural} in ${periodLabel}.`;
+
+    budgetSummaryNoteEl.classList.remove("is-hidden");
+  } else {
+    budgetSummaryNoteEl.classList.add("is-hidden");
+  }
+
+  // Show an empty-state message when no budgets exist for this month.
+  if (categoriesWithBudgets.length === 0) {
+    budgetListEl.innerHTML =
+      `<div class="empty-state">No budgets set for ${formatPeriodLabel(targetPeriod)}.</div>`;
+    return;
+  }
+
+  // Spread (...) sends every category as an individual function argument.
+  const statuses = getStatusForCategories(
+    targetPeriod,
+    ...categoriesWithBudgets
+  );
+
+  // forEach creates one budget row for every category.
+  statuses.forEach(({ category, status, spent, limit, remaining }) => {
+    // Keep the progress bar width between 0% and 100%.
+    const percent = limit > 0
+      ? Math.min((spent / limit) * 100, 100)
+      : 0;
+
+    const row = document.createElement("div");
+
+    // Add warning/exceeded styling based on the budget status.
+    row.className =
+      `budget-row ${status === "warning" ? "is-warning" : ""} ` +
+      `${status === "exceeded" ? "is-exceeded" : ""}`;
+
+    row.dataset.category = category;
+
+    let message = "";
+
+    if (status === "warning") {
+      message = `Warning: you are about to exceed your ${category} budget.`;
+    } else if (status === "exceeded") {
+      message =
+        `${category} budget exceeded by ${formatCurrency(Math.abs(remaining))}.`;
+    }
+
+    // Show remaining amount when the user is still within the budget.
+    const subText = remaining >= 0
+      ? `${formatCurrency(remaining)} remaining &middot; ${percent.toFixed(0)}% used`
+      : `${percent.toFixed(0)}% used`;
+
+    row.innerHTML = `
+      <div class="budget-head">
+        <span class="budget-cat">${category}</span>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="budget-nums">
+            ${formatCurrency(spent)} / ${formatCurrency(limit)}
+          </span>
+
+          <button
+            type="button"
+            class="icon-btn danger budget-delete-btn"
+            data-category="${category}"
+            title="Delete budget"
+            aria-label="Delete budget"
+          >
+            &#10005;
+          </button>
+        </div>
+      </div>
+
+      <div class="budget-track">
+        <div class="budget-fill" style="width:${percent.toFixed(1)}%"></div>
+      </div>
+
+      <div class="budget-sub">${subText}</div>
+      ${message ? `<div class="budget-msg">${message}</div>` : ""}
+    `;
+
+    // Add the completed row to the budget list.
+    budgetListEl.appendChild(row);
+  });
+}
