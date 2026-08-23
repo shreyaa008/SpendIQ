@@ -439,3 +439,139 @@ function renderBudgets(period = selectedPeriod) {
     budgetListEl.appendChild(row);
   });
 }
+
+/* =========================================================
+   Part 4: EVENTS AND INITIALIZATION
+   ========================================================= */
+
+/**
+ * Shows a confirmation popup before a delete action.
+ * @param {string} message
+ * @returns {boolean} true if the user clicks OK
+ */
+function confirmAction(message) {
+  return confirm(message);
+}
+
+/**
+ * Handles clicks on the budget list.
+ * Uses event delegation for all delete buttons.
+ * @param {Event} event
+ */
+function handleBudgetListClick(event) {
+  const deleteBtn = event.target.closest(".budget-delete-btn");
+
+  // Stop if the clicked element is not a delete button.
+  if (!deleteBtn) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const row = deleteBtn.closest(".budget-row");
+  const category = deleteBtn.dataset.category || (row && row.dataset.category);
+
+  if (!category) {
+    return;
+  }
+
+  const periodLabel = formatPeriodLabel(selectedPeriod);
+  const confirmMessage = `Delete the ${category} budget for ${periodLabel}?`;
+
+  // Delete only after the user confirms the action.
+  if (confirmAction(confirmMessage)) {
+    deleteBudget(category, selectedPeriod);
+    renderBudgets(selectedPeriod);
+  }
+}
+
+/**
+ * Handles the Set Budget form submission.
+ * Validates input, saves the budget, and refreshes the list.
+ * @param {Event} event
+ */
+function handleBudgetFormSubmit(event) {
+  event.preventDefault();
+
+  const category = budgetCategorySelect.value;
+  const amount = Number(budgetAmountInput.value);
+
+  // Show an error if the amount is empty or zero.
+  if (!amount || amount <= 0) {
+    budgetErrorEl.textContent =
+      "Please enter a budget amount greater than 0.";
+    budgetErrorEl.classList.remove("is-hidden");
+    return;
+  }
+
+  budgetErrorEl.classList.add("is-hidden");
+
+  const success = setBudget(category, amount, selectedPeriod);
+
+  // Show an error if the budget could not be saved.
+  if (!success) {
+    budgetErrorEl.textContent =
+      "Couldn't save that budget. Please check the category and amount.";
+    budgetErrorEl.classList.remove("is-hidden");
+    return;
+  }
+
+  // Reset the form and display the newly saved budget.
+  budgetForm.reset();
+  renderBudgets(selectedPeriod);
+}
+
+/**
+ * Handles warning threshold form submission.
+ * @param {Event} event
+ */
+function handleThresholdFormSubmit(event) {
+  event.preventDefault();
+
+  const value = Number(thresholdInput.value);
+
+  // Validate and save the threshold percentage.
+  if (!setWarningThreshold(value)) {
+    if (thresholdErrorEl) {
+      thresholdErrorEl.textContent =
+        "Please enter a valid warning threshold percentage between 1 and 100.";
+      thresholdErrorEl.classList.remove("is-hidden");
+    }
+    return;
+  }
+
+  // Hide any old error and refresh budget warning states.
+  if (thresholdErrorEl) {
+    thresholdErrorEl.classList.add("is-hidden");
+  }
+
+  renderBudgets(selectedPeriod);
+}
+
+/**
+ * Loads saved data, attaches event listeners, and renders budgets once.
+ */
+function initBudget() {
+  loadBudgets();
+  loadWarningThreshold();
+
+  // Attach form listeners only if the elements exist.
+  if (budgetForm) {
+    budgetForm.addEventListener("submit", handleBudgetFormSubmit);
+  }
+
+  if (thresholdForm) {
+    thresholdForm.addEventListener("submit", handleThresholdFormSubmit);
+  }
+
+  if (budgetListEl) {
+    budgetListEl.addEventListener("click", handleBudgetListClick);
+  }
+
+  // Display saved budgets when the page opens.
+  renderBudgets(selectedPeriod);
+}
+
+// Start the budget module after the HTML page has loaded.
+document.addEventListener("DOMContentLoaded", initBudget);
