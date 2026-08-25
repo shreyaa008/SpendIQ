@@ -20,6 +20,7 @@
   --danger-soft: #F6E4E1;
   --warn: #C9862B;
   --warn-soft: #F6EBD9;
+  --text-muted: #8B9A94;
 
   --font-display: 'Lora', Georgia, serif;
   --font-body: 'Inter', -apple-system, sans-serif;
@@ -27,6 +28,31 @@
 
   --radius: 6px;
   --shadow: 0 1px 2px rgba(22, 48, 41, 0.06), 0 4px 16px rgba(22, 48, 41, 0.04);
+}
+
+/* ---------- DARK THEME OVERRIDES ---------- */
+[data-theme="dark"] {
+  --paper: #121816;
+  --panel: #1B2421;
+  --ink: #E8EFEB;
+  --ink-soft: #9FB2AC;
+  --ink-faint: #6E8079;
+  --border: #2B3934;
+  --gold-soft: #2B2615;
+  --sage-soft: #1B2921;
+  --danger-soft: #331A1A;
+  --warn-soft: #332517;
+  --text-muted: #6E8079;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .sidebar {
+  background: #0B1311;
+  border-right: 1px solid var(--border);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+  background: var(--panel);
 }
 
 * { box-sizing: border-box; }
@@ -138,6 +164,28 @@ button, input, select {
 }
 .sidebar-foot p { margin: 0; }
 
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(250, 250, 248, 0.08);
+  border: 1px solid rgba(250, 250, 248, 0.15);
+  color: var(--paper);
+  padding: 7px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  width: 100%;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.theme-toggle-btn:hover {
+  background: rgba(250, 250, 248, 0.16);
+  border-color: rgba(250, 250, 248, 0.3);
+}
+
 /* ---------- MAIN ---------- */
 
 .main {
@@ -238,6 +286,61 @@ input:focus, select:focus { border-color: var(--gold); }
 .btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--border); }
 .btn-ghost:hover { border-color: var(--ink-soft); }
 
+.btn-secondary {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.btn-secondary:hover {
+  border-color: var(--ink);
+  background: #ffffff;
+}
+
+.btn-link {
+  background: transparent;
+  color: var(--gold);
+  border: none;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.btn-link:hover {
+  color: var(--ink);
+}
+
+/* ---------- PERIOD SWITCHER BAR ---------- */
+
+.period-switcher-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+
+.period-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.period-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--ink);
+  min-width: 140px;
+  text-align: center;
+}
+
 .form-error {
   grid-column: 1 / -1;
   background: var(--danger-soft);
@@ -260,6 +363,7 @@ input:focus, select:focus { border-color: var(--gold); }
 }
 
 .search-input { flex: 1; min-width: 180px; }
+.search-hint { font-size: 0.75rem; color: var(--text-muted); align-self: center; }
 .toolbar-select { width: 190px; }
 
 .ledger { border-top: 1px solid var(--border); }
@@ -498,6 +602,14 @@ input:focus, select:focus { border-color: var(--gold); }
 }
 .api-status.status-ok { color: var(--sage); }
 .api-status.status-down { color: var(--danger); }
+
+.threshold-form { margin-top: 12px; }
+
+.budget-sub {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
 
 /* ---------- UNDO TOAST ---------- */
 
