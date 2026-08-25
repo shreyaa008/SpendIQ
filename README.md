@@ -26,8 +26,8 @@ Smart-Expense-Manager/
 │   └── style.css
 └── js/
     ├── expenses.js   ← Member A: data + CRUD + LocalStorage
-    ├── ui.js         ← Member B: DOM, forms, dashboard rendering
-    ├── budget.js     ← Member C: budgets + warnings
+    ├── ui.js         
+    ├── budget.js     ← Member B: budgets + warnings
     └── currency.js   ← Member C: Fetch API currency converter
 ```
 
