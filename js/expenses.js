@@ -12,9 +12,6 @@
      6. Calculations — reduce, function expression
    ========================================================= */
 
-/* ---------- Lecture 15-16: shared constants (objects/arrays) ---------- */
-// Every other file (ui.js, budget.js) reads these instead of hardcoding
-// category/payment strings, so "Food" never becomes "food" somewhere else.
 const CATEGORIES = ["Food", "Shopping", "Travel", "Bills", "Entertainment", "Health", "Other"];
 const PAYMENT_MODES = ["UPI", "Cash", "Card", "Net Banking"];
 
@@ -23,14 +20,8 @@ const STORAGE_KEY_EXPENSES = "smartExpenseManager_expenses";
 const STORAGE_KEY_INCOME = "smartExpenseManager_income";
 const STORAGE_KEY_SELECTED_PERIOD = "smartExpenseManager_selectedPeriod";
 
-/* ---------- Lecture 1-2 / 9-10: the shared array ----------
-   `let` because we reassign it wholesale on load; every other
-   file just reads/reacts to this same array, never redeclares it. */
 let expenses = [];
 
-/* ---------- Lecture 11-12: "recently deleted" stack, powers Undo ----------
-   Kept separate from `expenses` on purpose — it's a small, temporary
-   holding area, not persisted data. */
 const MAX_RECENTLY_DELETED = 5;
 let recentlyDeleted = [];
 
@@ -137,7 +128,7 @@ function setSelectedPeriod(periodKey) {
 
 
 /* =========================================================
-   PERSISTENCE (Lecture 23, 15-16: JSON.stringify/parse)
+   PERSISTENCE
    ========================================================= */
 
 /**
@@ -240,7 +231,7 @@ function setMonthlyIncome(amount, period = selectedPeriod) {
 
 
 /* =========================================================
-   ID GENERATION (Lecture 5-6: while loop)
+   ID GENERATION (while loop)
    ========================================================= */
 
 /**
@@ -264,7 +255,7 @@ function generateUniqueId() {
 
 
 /* =========================================================
-   CRUD OPERATIONS (Lecture 7-8: functions, 11-12: array methods)
+   CRUD OPERATIONS (functions, rray methods)
    ========================================================= */
 
 /**
@@ -326,7 +317,7 @@ function deleteExpense(id) {
   const index = expenses.findIndex((expense) => expense.id === id);
   if (index === -1) return false;
 
-  // Lecture 11-12: splice() removes exactly one item at `index` and
+  // splice() removes exactly one item at `index` and
   // RETURNS it as a one-item array — different from filter(), which
   // would build a whole new array instead of mutating this one directly
   const [removedExpense] = expenses.splice(index, 1);
@@ -407,7 +398,7 @@ function getExpenseById(id) {
 
 
 /* =========================================================
-   FILTERING / SORTING (Lecture 13-14: higher-order functions)
+   FILTERING / SORTING (higher-order functions)
    ========================================================= */
 
 /**
@@ -578,4 +569,25 @@ function exportExpensesToCsv(period = selectedPeriod) {
   }
 
   const headers = ["Date", "Description", "Category", "Payment Mode", "Amount"];
-  const 
+    const rows = periodExpenses.map((expense) => [
+    escapeCsvValue(expense.date),
+    escapeCsvValue(expense.description),
+    escapeCsvValue(expense.category),
+    escapeCsvValue(expense.paymentMode),
+    escapeCsvValue(expense.amount)
+  ]);
+
+  const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.setAttribute("href", url);
+  link.setAttribute("download", `expenses-${period}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+} 
