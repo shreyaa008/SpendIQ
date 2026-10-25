@@ -1,6 +1,9 @@
-# Editor / IDE settings (personal, not project config)
-.vscode/
-
-# OS files
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+server/uploads/*
+!server/uploads/.gitkeep
+*.log
 .DS_Store
-Thumbs.db

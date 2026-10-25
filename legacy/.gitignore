@@ -1,0 +1,6 @@
+# Editor / IDE settings (personal, not project config)
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
